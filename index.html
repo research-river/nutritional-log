@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFCバランス計算</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+        h1 {
+            text-align: center;
+            color: #1d1d1f;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #86868b;
+            margin-bottom: 20px;
+        }
+        
+        /* CSV読み込み */
+        .csv-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .csv-section label {
+            font-size: 14px;
+            color: #86868b;
+        }
+        #csvFile {
+            font-size: 14px;
+        }
+        .csv-status {
+            font-size: 13px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: #e5e5ea;
+            color: #86868b;
+        }
+        .csv-status.loaded {
+            background: #d1f2eb;
+            color: #1e8449;
+        }
+        
+        /* カレンダーセクション */
+        .calendar-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .calendar-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .calendar-nav button {
+            padding: 5px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .calendar-nav button:hover {
+            background: #f5f5f7;
+        }
+        .calendar-nav span {
+            font-weight: bold;
+            min-width: 120px;
+            text-align: center;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-day-header {
+            text-align: center;
+            font-size: 12px;
+            color: #86868b;
+            padding: 5px;
+        }
+        .calendar-day {
+            text-align: center;
+            padding: 8px 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            position: relative;
+        }
+        .calendar-day:hover {
+            background: #f0f0f5;
+        }
+        .calendar-day.other-month {
+            color: #c7c7cc;
+        }
+        .calendar-day.selected {
+            background: #007aff;
+            color: white;
+        }
+        .calendar-day.has-data::after {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            background: #34c759;
+            border-radius: 50%;
+        }
+        .calendar-day.selected.has-data::after {
+            background: white;
+        }
+        .selected-date-display {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e5ea;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .today-btn {
+            padding: 5px 15px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        /* 目標設定 */
+        .target-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .target-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #86868b;
+        }
+        .target-inputs {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .target-inputs label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        .target-inputs input {
+            width: 70px;
+            padding: 5px 8px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .target-row2 {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e5ea;
+        }
+        
+        /* 食品選択 */
+        .input-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .input-section.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .meal-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .meal-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #d2d2d7;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .meal-btn.active {
+            border-color: #007aff;
+            background: #007aff;
+            color: white;
+        }
+        .meal-btn:hover:not(.active) {
+            border-color: #007aff;
+        }
+        
+        .food-select-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        #foodSelect {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        #quantity {
+            width: 80px;
+            padding: 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 16px;
+            text-align: center;
+        }
+        #addBtn {
+            padding: 10px 20px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #addBtn:hover {
+            background: #0056b3;
+        }
+        
+        /* 食事リスト */
+        .meals-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 900px) {
+            .meals-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .meals-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .meal-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .meal-card h3 {
+            margin: 0 0 10px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e5ea;
+            font-size: 16px;
+        }
+        .meal-card.breakfast h3 { color: #ff9500; }
+        .meal-card.lunch h3 { color: #34c759; }
+        .meal-card.dinner h3 { color: #5856d6; }
+        .meal-card.snack h3 { color: #ff2d55; }
+        
+        .food-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f2f2f7;
+            font-size: 13px;
+        }
+        .food-item:last-child {
+            border-bottom: none;
+        }
+        .food-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .food-kcal {
+            color: #86868b;
+            margin: 0 10px;
+            white-space: nowrap;
+        }
+        .delete-btn {
+            background: #ff3b30;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .meal-subtotal {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #e5e5ea;
+            font-size: 12px;
+            color: #1d1d1f;
+        }
+        .meal-subtotal-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .meal-subtotal-row.total {
+            font-weight: bold;
+            font-size: 13px;
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px solid #e5e5ea;
+        }
+        
+        /* 合計表示 */
+        .summary-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            margin-bottom: 20px;
+        }
+        .summary-section h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+        @media (max-width: 600px) {
+            .summary-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .summary-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .summary-unit {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .summary-target {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 3px;
+        }
+        
+        /* PFCバー */
+        .pfc-bar-container {
+            margin-top: 20px;
+        }
+        .pfc-bar-label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        .pfc-bar {
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            background: rgba(255,255,255,0.2);
+        }
+        .pfc-bar-p {
+            background: #ff6b6b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: width 0.3s;
+        }
+        .pfc-bar-f {
+            background: #feca57;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: width 0.3s;
+        }
+        .pfc-bar-c {
+            background: #48dbfb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: width 0.3s;
+        }
+        
+        /* クリアボタン */
+        .clear-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #clearBtn {
+            padding: 10px 30px;
+            background: #ff3b30;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #clearBtn:hover {
+            background: #d63029;
+        }
+        
+        .empty-message {
+            color: #86868b;
+            font-size: 13px;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        /* データ管理 */
+        .data-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .data-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #d2d2d7;
+            background: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-action:hover {
+            background: #f5f5f7;
+        }
+        .btn-primary-outline {
+            color: #007aff;
+            border-color: #007aff;
+        }
+        .btn-primary-outline:hover {
+            background: #f0f8ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ PFCバランス計算</h1>
+    <p class="subtitle">1日の食事を記録してPFCバランスを確認</p>
+    
+    <!-- CSV読み込み -->
+    <div class="csv-section">
+        <label>📄 栄養成分表CSV:</label>
+        <input type="file" id="csvFile" accept=".csv">
+        <span class="csv-status" id="csvStatus">未読み込み</span>
+    </div>
+    
+    <!-- カレンダー -->
+    <div class="calendar-section">
+        <div class="calendar-header">
+            <h3>📅 カレンダー</h3>
+            <div class="calendar-nav">
+                <button onclick="changeMonth(-1)">◀</button>
+                <span id="currentMonth"></span>
+                <button onclick="changeMonth(1)">▶</button>
+            </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="selected-date-display">
+            <span>選択中: <strong id="selectedDateDisplay"></strong></span>
+            <button class="today-btn" onclick="goToToday()">今日へ</button>
+        </div>
+    </div>
+    
+    <!-- 目標設定 -->
+    <div class="target-section">
+        <h3>📊 目標設定</h3>
+        <div class="target-inputs">
+            <label>カロリー: <input type="number" id="targetKcal" value="1666"> kcal</label>
+            <label>P: <input type="number" id="targetP" value="27"> %</label>
+            <label>F: <input type="number" id="targetF" value="35"> %</label>
+            <label>C: <input type="number" id="targetC" value="38"> %</label>
+        </div>
+        <div class="target-inputs target-row2">
+            <label>食物繊維: <input type="number" id="targetFiber" value="20"> g</label>
+            <label>食塩: <input type="number" id="targetSalt" value="7" step="0.5"> g以下</label>
+        </div>
+    </div>
+    
+    <!-- 食品選択 -->
+    <div class="input-section disabled" id="inputSection">
+        <div class="meal-selector">
+            <button class="meal-btn active" data-meal="breakfast">🌅 朝食</button>
+            <button class="meal-btn" data-meal="lunch">☀️ 昼食</button>
+            <button class="meal-btn" data-meal="dinner">🌙 夕食</button>
+            <button class="meal-btn" data-meal="snack">🍪 間食</button>
+        </div>
+        <div class="food-select-row">
+            <select id="foodSelect">
+                <option value="">-- CSVを読み込んでください --</option>
+            </select>
+            <select id="quantity">
+                    <option value="0.333">1/3</option>
+                    <option value="0.5">1/2</option>
+                    <option value="0.667">2/3</option>
+                    <option value="1" selected>1</option>
+                    <option value="1.333">1+1/3</option>
+                    <option value="1.5">1+1/2</option>
+                    <option value="1.667">1+2/3</option>
+                    <option value="2">2</option>
+                    <option value="2.5">2+1/2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+            <button id="addBtn">追加</button>
+        </div>
+    </div>
+    
+    <!-- 食事リスト -->
+    <div class="meals-container">
+        <div class="meal-card breakfast">
+            <h3>🌅 朝食</h3>
+            <div id="breakfast-list"><p class="empty-message">食品を追加してください</p></div>
+            <div class="meal-subtotal" id="breakfast-subtotal"></div>
+        </div>
+        <div class="meal-card lunch">
+            <h3>☀️ 昼食</h3>
+            <div id="lunch-list"><p class="empty-message">食品を追加してください</p></div>
+            <div class="meal-subtotal" id="lunch-subtotal"></div>
+        </div>
+        <div class="meal-card dinner">
+            <h3>🌙 夕食</h3>
+            <div id="dinner-list"><p class="empty-message">食品を追加してください</p></div>
+            <div class="meal-subtotal" id="dinner-subtotal"></div>
+        </div>
+        <div class="meal-card snack">
+            <h3>🍪 間食</h3>
+            <div id="snack-list"><p class="empty-message">食品を追加してください</p></div>
+            <div class="meal-subtotal" id="snack-subtotal"></div>
+        </div>
+    </div>
+    
+    <!-- 合計 -->
+    <div class="summary-section">
+        <h2>📈 本日の合計</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">カロリー</div>
+                <div class="summary-value" id="totalKcal">0</div>
+                <div class="summary-unit">kcal</div>
+                <div class="summary-target" id="kcalTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">たんぱく質(P)</div>
+                <div class="summary-value" id="totalP">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="pTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">脂質(F)</div>
+                <div class="summary-value" id="totalF">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="fTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">炭水化物(C)</div>
+                <div class="summary-value" id="totalC">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="cTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">食物繊維</div>
+                <div class="summary-value" id="totalFiber">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="fiberTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">食塩相当量</div>
+                <div class="summary-value" id="totalSalt">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="saltTarget"></div>
+            </div>
+        </div>
+        <div class="pfc-bar-container">
+            <div class="pfc-bar-label">PFCバランス</div>
+            <div class="pfc-bar">
+                <div class="pfc-bar-p" id="barP" style="width: 33%">P 0%</div>
+                <div class="pfc-bar-f" id="barF" style="width: 33%">F 0%</div>
+                <div class="pfc-bar-c" id="barC" style="width: 34%">C 0%</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- データ管理 -->
+    <div class="data-section">
+        <h3>💾 データ管理・共有</h3>
+        <p style="font-size: 13px; color: #86868b; margin-bottom: 15px;">
+            入力したデータをファイルとして保存したり、読み込んだりできます。<br>
+            他の端末（iPadなど）にデータを移す際や、栄養士への提出用CSVを作成する際に使用してください。
+        </p>
+        <div class="data-buttons">
+            <button class="btn-action" onclick="exportJSON()">📤 データ書き出し (バックアップ)</button>
+            <label class="btn-action" style="cursor: pointer;">
+                📥 データ読み込み (復元)
+                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importJSON(this)">
+            </label>
+            <button class="btn-action btn-primary-outline" onclick="exportCSV()">📊 CSV出力 (Excel/印刷用)</button>
+        </div>
+    </div>
+
+    <div class="clear-section">
+        <button id="clearBtn">🗑️ この日のデータをクリア</button>
+    </div>
+
+    <script>
+        // 食品データ（CSVから読み込み）
+        let foods = [];
+        
+        // 日付管理
+        let selectedDate = new Date();
+        let currentViewMonth = new Date();
+        
+        // 全日付のデータ { "2025-01-04": { breakfast: [], lunch: [], dinner: [] }, ... }
+        let allData = {};
+        
+        let currentMeal = 'breakfast';
+        
+        // 日付をキー文字列に変換
+        function dateToKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        
+        // 現在選択中の日のデータを取得
+        function getCurrentDayData() {
+            const key = dateToKey(selectedDate);
+            if (!allData[key]) {
+                allData[key] = { breakfast: [], lunch: [], dinner: [], snack: [] };
+            }
+            // 既存データにsnackがない場合の対応
+            if (!allData[key].snack) {
+                allData[key].snack = [];
+            }
+            return allData[key];
+        }
+        
+        // 初期化
+        function init() {
+            // イベントリスナー
+            document.getElementById('csvFile').addEventListener('change', handleCSV);
+            
+            document.querySelectorAll('.meal-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.meal-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMeal = btn.dataset.meal;
+                });
+            });
+            
+            document.getElementById('addBtn').addEventListener('click', addFood);
+            document.getElementById('clearBtn').addEventListener('click', clearDay);
+            
+            // 目標値変更時
+            ['targetKcal', 'targetP', 'targetF', 'targetC', 'targetFiber', 'targetSalt'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    saveTargets();
+                    updateSummary();
+                });
+            });
+            
+            // ローカルストレージから復元
+            loadFromStorage();
+            loadTargets();
+            renderCalendar();
+            renderMeals();
+            updateSummary();
+        }
+        
+        // カレンダー描画
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentViewMonth.getFullYear();
+            const month = currentViewMonth.getMonth();
+            
+            document.getElementById('currentMonth').textContent = `${year}年${month + 1}月`;
+            
+            // 曜日ヘッダー
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            let html = days.map(d => `<div class="calendar-day-header">${d}</div>`).join('');
+            
+            // 月の最初の日と最後の日
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            // 前月の日を埋める
+            const startDayOfWeek = firstDay.getDay();
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            for (let i = startDayOfWeek - 1; i >= 0; i--) {
+                const d = prevMonthLastDay - i;
+                const date = new Date(year, month - 1, d);
+                html += createDayCell(date, true);
+            }
+            
+            // 当月の日
+            for (let d = 1; d <= lastDay.getDate(); d++) {
+                const date = new Date(year, month, d);
+                html += createDayCell(date, false);
+            }
+            
+            // 次月の日を埋める
+            const endDayOfWeek = lastDay.getDay();
+            for (let i = 1; i < 7 - endDayOfWeek; i++) {
+                const date = new Date(year, month + 1, i);
+                html += createDayCell(date, true);
+            }
+            
+            grid.innerHTML = html;
+            
+            // 選択中の日付表示
+            document.getElementById('selectedDateDisplay').textContent = formatDateJa(selectedDate);
+        }
+        
+        function createDayCell(date, isOtherMonth) {
+            const key = dateToKey(date);
+            const isSelected = dateToKey(selectedDate) === key;
+            const hasData = allData[key] && (
+                allData[key].breakfast.length > 0 ||
+                allData[key].lunch.length > 0 ||
+                allData[key].dinner.length > 0 ||
+                (allData[key].snack && allData[key].snack.length > 0)
+            );
+            
+            let classes = 'calendar-day';
+            if (isOtherMonth) classes += ' other-month';
+            if (isSelected) classes += ' selected';
+            if (hasData) classes += ' has-data';
+            
+            return `<div class="${classes}" onclick="selectDate('${key}')">${date.getDate()}</div>`;
+        }
+        
+        function selectDate(key) {
+            const parts = key.split('-');
+            selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            renderCalendar();
+            renderMeals();
+            updateSummary();
+        }
+        
+        function changeMonth(delta) {
+            currentViewMonth.setMonth(currentViewMonth.getMonth() + delta);
+            renderCalendar();
+        }
+        
+        function goToToday() {
+            selectedDate = new Date();
+            currentViewMonth = new Date();
+            renderCalendar();
+            renderMeals();
+            updateSummary();
+        }
+        
+        function formatDateJa(date) {
+            const y = date.getFullYear();
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            return `${y}年${m}月${d}日（${days[date.getDay()]}）`;
+        }
+        
+        function handleCSV(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const text = event.target.result;
+                parseCSV(text);
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+        
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            foods = [];
+            
+            // ヘッダーをスキップ（1行目）
+            for (let i = 1; i < lines.length; i++) {
+                const cols = parseCSVLine(lines[i]);
+                if (cols.length >= 5 && cols[0]) {
+                    foods.push({
+                        name: cols[0],
+                        kcal: parseFloat(cols[1]) || 0,
+                        p: parseFloat(cols[2]) || 0,
+                        f: parseFloat(cols[3]) || 0,
+                        c: parseFloat(cols[4]) || 0,
+                        sugar: parseFloat(cols[5]) || 0,
+                        fiber: parseFloat(cols[6]) || 0,
+                        salt: parseFloat(cols[7]) || 0
+                    });
+                }
+            }
+            
+            // セレクトボックスを更新
+            const select = document.getElementById('foodSelect');
+            select.innerHTML = '<option value="">-- 食品を選択 --</option>';
+            foods.forEach((food, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${food.name} (${food.kcal}kcal)`;
+                select.appendChild(option);
+            });
+            
+            // UIを有効化
+            document.getElementById('inputSection').classList.remove('disabled');
+            const status = document.getElementById('csvStatus');
+            status.textContent = `${foods.length}件読み込み済`;
+            status.classList.add('loaded');
+            
+            // 食品データをローカルストレージに保存
+            localStorage.setItem('pfc_foods', JSON.stringify(foods));
+        }
+        
+        // CSVの1行をパース（カンマ区切り、引用符対応）
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+        
+        function addFood() {
+            const select = document.getElementById('foodSelect');
+            const quantity = parseFloat(document.getElementById('quantity').value);
+            
+            if (select.value === '' || isNaN(quantity) || quantity <= 0) return;
+            
+            const food = foods[select.value];
+            const meals = getCurrentDayData();
+            meals[currentMeal].push({
+                ...food,
+                quantity: quantity,
+                id: Date.now()
+            });
+            
+            saveToStorage();
+            renderCalendar();
+            renderMeals();
+            updateSummary();
+            
+            // リセット
+            select.value = '';
+            document.getElementById('quantity').value = '1';
+        }
+        
+        function deleteFood(meal, id) {
+            const meals = getCurrentDayData();
+            meals[meal] = meals[meal].filter(f => f.id !== id);
+            saveToStorage();
+            renderCalendar();
+            renderMeals();
+            updateSummary();
+        }
+        
+        // 数量を分数表示に変換
+        function formatQuantity(qty) {
+            const num = parseFloat(qty);
+            // 許容誤差0.05で判定
+            if (Math.abs(num - 0.333) < 0.05) return '1/3';
+            if (Math.abs(num - 0.5) < 0.05) return '1/2';
+            if (Math.abs(num - 0.667) < 0.05) return '2/3';
+            if (Math.abs(num - 1) < 0.05) return '1';
+            if (Math.abs(num - 1.333) < 0.05) return '1+1/3';
+            if (Math.abs(num - 1.5) < 0.05) return '1+1/2';
+            if (Math.abs(num - 1.667) < 0.05) return '1+2/3';
+            if (Math.abs(num - 2) < 0.05) return '2';
+            if (Math.abs(num - 2.5) < 0.05) return '2+1/2';
+            if (Math.abs(num - 3) < 0.05) return '3';
+            if (Math.abs(num - 4) < 0.05) return '4';
+            if (Math.abs(num - 5) < 0.05) return '5';
+            return num.toFixed(1);
+        }
+        
+        // グローバルスコープに公開（onclick用）
+        window.deleteFood = deleteFood;
+        window.selectDate = selectDate;
+        window.changeMonth = changeMonth;
+        window.goToToday = goToToday;
+        
+        function renderMeals() {
+            const meals = getCurrentDayData();
+            
+            ['breakfast', 'lunch', 'dinner', 'snack'].forEach(meal => {
+                const list = document.getElementById(`${meal}-list`);
+                const subtotal = document.getElementById(`${meal}-subtotal`);
+                
+                if (!meals[meal] || meals[meal].length === 0) {
+                    list.innerHTML = '<p class="empty-message">食品を追加してください</p>';
+                    subtotal.innerHTML = '';
+                    return;
+                }
+                
+                let html = '';
+                let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalFiber = 0, totalSalt = 0;
+                
+                meals[meal].forEach(food => {
+                    const kcal = Math.round(food.kcal * food.quantity);
+                    totalKcal += food.kcal * food.quantity;
+                    totalP += food.p * food.quantity;
+                    totalF += food.f * food.quantity;
+                    totalC += food.c * food.quantity;
+                    totalFiber += (food.fiber || 0) * food.quantity;
+                    totalSalt += (food.salt || 0) * food.quantity;
+                    
+                    const qtyText = food.quantity !== 1 ? ` ×${formatQuantity(food.quantity)}` : '';
+                    html += `
+                        <div class="food-item">
+                            <span class="food-name">${food.name}${qtyText}</span>
+                            <span class="food-kcal">${kcal}kcal</span>
+                            <button class="delete-btn" onclick="deleteFood('${meal}', ${food.id})">×</button>
+                        </div>
+                    `;
+                });
+                
+                list.innerHTML = html;
+                subtotal.innerHTML = `
+                    <div class="meal-subtotal-row"><span>P:</span><span>${totalP.toFixed(1)}g</span></div>
+                    <div class="meal-subtotal-row"><span>F:</span><span>${totalF.toFixed(1)}g</span></div>
+                    <div class="meal-subtotal-row"><span>C:</span><span>${totalC.toFixed(1)}g</span></div>
+                    <div class="meal-subtotal-row"><span>食物繊維:</span><span>${totalFiber.toFixed(1)}g</span></div>
+                    <div class="meal-subtotal-row"><span>食塩:</span><span>${totalSalt.toFixed(2)}g</span></div>
+                    <div class="meal-subtotal-row total"><span>カロリー:</span><span>${Math.round(totalKcal)} kcal</span></div>
+                `;
+            });
+        }
+        
+        function updateSummary() {
+            const meals = getCurrentDayData();
+            let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalFiber = 0, totalSalt = 0;
+            
+            Object.values(meals).flat().forEach(food => {
+                totalKcal += food.kcal * food.quantity;
+                totalP += food.p * food.quantity;
+                totalF += food.f * food.quantity;
+                totalC += food.c * food.quantity;
+                totalFiber += (food.fiber || 0) * food.quantity;
+                totalSalt += (food.salt || 0) * food.quantity;
+            });
+            
+            document.getElementById('totalKcal').textContent = Math.round(totalKcal);
+            document.getElementById('totalP').textContent = totalP.toFixed(1);
+            document.getElementById('totalF').textContent = totalF.toFixed(1);
+            document.getElementById('totalC').textContent = totalC.toFixed(1);
+            document.getElementById('totalFiber').textContent = totalFiber.toFixed(1);
+            document.getElementById('totalSalt').textContent = totalSalt.toFixed(1);
+            
+            // 目標値との比較
+            const targetKcal = parseInt(document.getElementById('targetKcal').value) || 0;
+            const targetPPct = parseInt(document.getElementById('targetP').value) || 0;
+            const targetFPct = parseInt(document.getElementById('targetF').value) || 0;
+            const targetCPct = parseInt(document.getElementById('targetC').value) || 0;
+            const targetFiber = parseInt(document.getElementById('targetFiber').value) || 0;
+            const targetSalt = parseFloat(document.getElementById('targetSalt').value) || 0;
+            
+            const targetPg = Math.round(targetKcal * targetPPct / 100 / 4);
+            const targetFg = Math.round(targetKcal * targetFPct / 100 / 9);
+            const targetCg = Math.round(targetKcal * targetCPct / 100 / 4);
+            
+            document.getElementById('kcalTarget').textContent = `目標: ${targetKcal}`;
+            document.getElementById('pTarget').textContent = `目標: ${targetPg}g`;
+            document.getElementById('fTarget').textContent = `目標: ${targetFg}g`;
+            document.getElementById('cTarget').textContent = `目標: ${targetCg}g`;
+            document.getElementById('fiberTarget').textContent = `目標: ${targetFiber}g以上`;
+            document.getElementById('saltTarget').textContent = `目標: ${targetSalt}g以下`;
+            
+            // PFCバランスバー
+            const totalPFCKcal = (totalP * 4) + (totalF * 9) + (totalC * 4);
+            if (totalPFCKcal > 0) {
+                const pPct = Math.round((totalP * 4) / totalPFCKcal * 100);
+                const fPct = Math.round((totalF * 9) / totalPFCKcal * 100);
+                const cPct = 100 - pPct - fPct;
+                
+                document.getElementById('barP').style.width = pPct + '%';
+                document.getElementById('barP').textContent = `P ${pPct}%`;
+                document.getElementById('barF').style.width = fPct + '%';
+                document.getElementById('barF').textContent = `F ${fPct}%`;
+                document.getElementById('barC').style.width = cPct + '%';
+                document.getElementById('barC').textContent = `C ${cPct}%`;
+            } else {
+                document.getElementById('barP').style.width = '33%';
+                document.getElementById('barP').textContent = 'P 0%';
+                document.getElementById('barF').style.width = '33%';
+                document.getElementById('barF').textContent = 'F 0%';
+                document.getElementById('barC').style.width = '34%';
+                document.getElementById('barC').textContent = 'C 0%';
+            }
+        }
+        
+        function clearDay() {
+            const dateStr = formatDateJa(selectedDate);
+            if (confirm(`${dateStr}のデータをクリアしますか？`)) {
+                const key = dateToKey(selectedDate);
+                allData[key] = { breakfast: [], lunch: [], dinner: [], snack: [] };
+                saveToStorage();
+                renderCalendar();
+                renderMeals();
+                updateSummary();
+            }
+        }
+        
+        function saveToStorage() {
+            localStorage.setItem('pfc_all_data', JSON.stringify(allData));
+        }
+        
+        function loadFromStorage() {
+            // 全データを復元
+            const savedData = localStorage.getItem('pfc_all_data');
+            if (savedData) {
+                allData = JSON.parse(savedData);
+            }
+            
+            // 食品データを復元（前回のCSVデータ）
+            const savedFoods = localStorage.getItem('pfc_foods');
+            if (savedFoods) {
+                foods = JSON.parse(savedFoods);
+                
+                const select = document.getElementById('foodSelect');
+                select.innerHTML = '<option value="">-- 食品を選択 --</option>';
+                foods.forEach((food, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${food.name} (${food.kcal}kcal)`;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('inputSection').classList.remove('disabled');
+                const status = document.getElementById('csvStatus');
+                status.textContent = `${foods.length}件（前回データ）`;
+                status.classList.add('loaded');
+            }
+        }
+        
+        function saveTargets() {
+            const targets = {
+                kcal: document.getElementById('targetKcal').value,
+                p: document.getElementById('targetP').value,
+                f: document.getElementById('targetF').value,
+                c: document.getElementById('targetC').value,
+                fiber: document.getElementById('targetFiber').value,
+                salt: document.getElementById('targetSalt').value
+            };
+            localStorage.setItem('pfc_targets', JSON.stringify(targets));
+        }
+        
+        function loadTargets() {
+            const saved = localStorage.getItem('pfc_targets');
+            if (saved) {
+                const targets = JSON.parse(saved);
+                document.getElementById('targetKcal').value = targets.kcal || 1666;
+                document.getElementById('targetP').value = targets.p || 27;
+                document.getElementById('targetF').value = targets.f || 35;
+                document.getElementById('targetC').value = targets.c || 38;
+                document.getElementById('targetFiber').value = targets.fiber || 20;
+                document.getElementById('targetSalt').value = targets.salt || 7;
+            }
+        }
+
+        // データの書き出し（JSON）- 同期・バックアップ用
+        function exportJSON() {
+            const dataStr = JSON.stringify(allData, null, 2);
+            const blob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pfc_data_backup_${dateToKey(new Date())}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // データの読み込み（JSON）- 同期・復元用
+        function importJSON(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (confirm('現在のデータを上書きして読み込みますか？')) {
+                        allData = importedData;
+                        saveToStorage();
+                        renderCalendar();
+                        renderMeals();
+                        updateSummary();
+                        alert('データを読み込みました。');
+                    }
+                } catch (err) {
+                    alert('ファイルの読み込みに失敗しました。形式が正しいか確認してください。');
+                    console.error(err);
+                }
+                // inputをリセット（同じファイルを再度選択できるように）
+                input.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // CSV出力 - 栄養士提出・印刷用
+        function exportCSV() {
+            // BOM付きUTF-8で出力（Excelでの文字化け防止）
+            let csvContent = "\uFEFF";
+            // ヘッダー
+            csvContent += "日付,食事区分,食品名,分量,エネルギー(kcal),たんぱく質(g),脂質(g),炭水化物(g),食物繊維(g),食塩相当量(g)\n";
+
+            // 日付順にソート
+            const sortedDates = Object.keys(allData).sort();
+
+            const mealLabels = { breakfast: '朝食', lunch: '昼食', dinner: '夕食', snack: '間食' };
+
+            sortedDates.forEach(date => {
+                const dayData = allData[date];
+                ['breakfast', 'lunch', 'dinner', 'snack'].forEach(mealType => {
+                    if (dayData[mealType]) {
+                        dayData[mealType].forEach(food => {
+                            const qty = food.quantity;
+                            const row = [
+                                date,
+                                mealLabels[mealType],
+                                `"${food.name}"`, // カンマを含む食品名対策
+                                formatQuantity(qty),
+                                (food.kcal * qty).toFixed(1),
+                                (food.p * qty).toFixed(1),
+                                (food.f * qty).toFixed(1),
+                                (food.c * qty).toFixed(1),
+                                ((food.fiber || 0) * qty).toFixed(1),
+                                ((food.salt || 0) * qty).toFixed(2)
+                            ];
+                            csvContent += row.join(",") + "\n";
+                        });
+                    }
+                });
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `食事記録_${dateToKey(new Date())}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
