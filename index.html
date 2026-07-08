@@ -748,6 +748,8 @@
         // 検索候補の一覧（矢印キーでの選択用）と、現在ハイライト中の位置
         let dropdownOptions = [];
         let highlightedOptionIndex = -1;
+        // この一覧が表示されてから、矢印キー(またはCtrl+P/N)で移動したかどうか
+        let hasNavigatedDropdown = false;
         
         // 日付管理
         let selectedDate = new Date();
@@ -805,20 +807,31 @@
             });
             searchInput.addEventListener('focus', renderFoodDropdown);
             searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowDown') {
+                // 矢印キーが小さいMagic Keyboardでも使えるよう、Ctrl+N/Ctrl+Pでも移動できるようにする
+                const isDown = e.key === 'ArrowDown' || (e.ctrlKey && e.key.toLowerCase() === 'n');
+                const isUp = e.key === 'ArrowUp' || (e.ctrlKey && e.key.toLowerCase() === 'p');
+
+                if (isDown) {
                     if (dropdownOptions.length > 0) {
                         highlightedOptionIndex = Math.min(highlightedOptionIndex + 1, dropdownOptions.length - 1);
+                        hasNavigatedDropdown = true;
                         updateHighlight();
                     }
                     e.preventDefault();
-                } else if (e.key === 'ArrowUp') {
+                } else if (isUp) {
                     if (dropdownOptions.length > 0) {
                         highlightedOptionIndex = Math.max(highlightedOptionIndex - 1, 0);
+                        hasNavigatedDropdown = true;
                         updateHighlight();
                     }
                     e.preventDefault();
                 } else if (e.key === 'Enter') {
-                    // ハイライト中の候補（矢印キー未操作なら先頭）を選択
+                    // 候補が複数あり、まだ矢印キーで選び分けていない場合は確定せず一覧を開いたままにする
+                    // （「さば」等の同名候補があるとき、Enterで即確定されると選び直せなくなるため）
+                    if (dropdownOptions.length > 1 && !hasNavigatedDropdown) {
+                        e.preventDefault();
+                        return;
+                    }
                     const target = dropdownOptions[highlightedOptionIndex] || dropdownOptions[0];
                     if (target) selectFood(target.index);
                     e.preventDefault();
@@ -1025,6 +1038,7 @@
             const query = normalizeForSearch(document.getElementById('foodSearch').value.trim());
             dropdown.innerHTML = '';
             dropdownOptions = [];
+            hasNavigatedDropdown = false;
 
             const addGroup = (label, indices) => {
                 if (indices.length === 0) return;
@@ -1048,6 +1062,7 @@
                     row.addEventListener('click', () => selectFood(i));
                     row.addEventListener('mouseenter', () => {
                         highlightedOptionIndex = optionPosition;
+                        hasNavigatedDropdown = true;
                         updateHighlight();
                     });
                     dropdown.appendChild(row);
