@@ -1159,14 +1159,15 @@
                 }
                 
                 let html = '';
-                let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalFiber = 0, totalSalt = 0;
-                
+                let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalSugar = 0, totalFiber = 0, totalSalt = 0;
+
                 meals[meal].forEach(food => {
                     const kcal = Math.round(food.kcal * food.quantity);
                     totalKcal += food.kcal * food.quantity;
                     totalP += food.p * food.quantity;
                     totalF += food.f * food.quantity;
                     totalC += food.c * food.quantity;
+                    totalSugar += (food.sugar || 0) * food.quantity;
                     totalFiber += (food.fiber || 0) * food.quantity;
                     totalSalt += (food.salt || 0) * food.quantity;
                     
@@ -1185,6 +1186,7 @@
                     <div class="meal-subtotal-row"><span>P:</span><span>${totalP.toFixed(1)}g</span></div>
                     <div class="meal-subtotal-row"><span>F:</span><span>${totalF.toFixed(1)}g</span></div>
                     <div class="meal-subtotal-row"><span>C:</span><span>${totalC.toFixed(1)}g</span></div>
+                    <div class="meal-subtotal-row"><span>糖質:</span><span>${totalSugar.toFixed(1)}g</span></div>
                     <div class="meal-subtotal-row"><span>食物繊維:</span><span>${totalFiber.toFixed(1)}g</span></div>
                     <div class="meal-subtotal-row"><span>食塩:</span><span>${totalSalt.toFixed(2)}g</span></div>
                     <div class="meal-subtotal-row total"><span>カロリー:</span><span>${Math.round(totalKcal)} kcal</span></div>
@@ -1364,7 +1366,7 @@
             // BOM付きUTF-8で出力（Excelでの文字化け防止）
             let csvContent = "\uFEFF";
             // ヘッダー
-            csvContent += "日付,食事区分,食品名,分量,エネルギー(kcal),たんぱく質(g),脂質(g),炭水化物(g),食物繊維(g),食塩相当量(g)\n";
+            csvContent += "日付,食事区分,食品名,分量,エネルギー(kcal),たんぱく質(g),脂質(g),炭水化物(g),糖質(g),食物繊維(g),食塩相当量(g)\n";
 
             // 日付順にソート
             const sortedDates = Object.keys(allData).sort();
@@ -1386,6 +1388,7 @@
                                 (food.p * qty).toFixed(1),
                                 (food.f * qty).toFixed(1),
                                 (food.c * qty).toFixed(1),
+                                ((food.sugar || 0) * qty).toFixed(1),
                                 ((food.fiber || 0) * qty).toFixed(1),
                                 ((food.salt || 0) * qty).toFixed(2)
                             ];
