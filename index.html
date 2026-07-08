@@ -290,6 +290,9 @@
         .food-option:hover {
             background: #f0f7ff;
         }
+        .food-option.highlighted {
+            background: #cfe8ff;
+        }
         .food-option-kcal {
             color: #86868b;
             font-size: 12px;
@@ -741,6 +744,10 @@
         // 検索で選択中の食品と、食品ごとの使用回数（よく使う食品の表示用）
         let selectedFoodIndex = null;
         let foodUsage = {};
+
+        // 検索候補の一覧（矢印キーでの選択用）と、現在ハイライト中の位置
+        let dropdownOptions = [];
+        let highlightedOptionIndex = -1;
         
         // 日付管理
         let selectedDate = new Date();
@@ -798,10 +805,22 @@
             });
             searchInput.addEventListener('focus', renderFoodDropdown);
             searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    // 先頭の候補を選択
-                    const first = document.querySelector('#foodDropdown .food-option');
-                    if (first) selectFood(parseInt(first.dataset.index));
+                if (e.key === 'ArrowDown') {
+                    if (dropdownOptions.length > 0) {
+                        highlightedOptionIndex = Math.min(highlightedOptionIndex + 1, dropdownOptions.length - 1);
+                        updateHighlight();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'ArrowUp') {
+                    if (dropdownOptions.length > 0) {
+                        highlightedOptionIndex = Math.max(highlightedOptionIndex - 1, 0);
+                        updateHighlight();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'Enter') {
+                    // ハイライト中の候補（矢印キー未操作なら先頭）を選択
+                    const target = dropdownOptions[highlightedOptionIndex] || dropdownOptions[0];
+                    if (target) selectFood(target.index);
                     e.preventDefault();
                 } else if (e.key === 'Escape') {
                     closeFoodDropdown();
@@ -1005,6 +1024,7 @@
             const dropdown = document.getElementById('foodDropdown');
             const query = normalizeForSearch(document.getElementById('foodSearch').value.trim());
             dropdown.innerHTML = '';
+            dropdownOptions = [];
 
             const addGroup = (label, indices) => {
                 if (indices.length === 0) return;
@@ -1024,8 +1044,14 @@
                     kcal.textContent = `${food.kcal}kcal`;
                     row.appendChild(name);
                     row.appendChild(kcal);
+                    const optionPosition = dropdownOptions.length;
                     row.addEventListener('click', () => selectFood(i));
+                    row.addEventListener('mouseenter', () => {
+                        highlightedOptionIndex = optionPosition;
+                        updateHighlight();
+                    });
                     dropdown.appendChild(row);
+                    dropdownOptions.push({ index: i, el: row });
                 });
             };
 
@@ -1066,7 +1092,25 @@
                 dropdown.appendChild(empty);
             }
 
+            // 先頭候補をあらかじめハイライト（矢印キーですぐ移動できるように）
+            highlightedOptionIndex = dropdownOptions.length > 0 ? 0 : -1;
+            updateHighlight();
+
             dropdown.classList.add('open');
+        }
+
+        // ハイライト位置に応じて.food-optionへの見た目を反映し、表示範囲外なら自動スクロール
+        function updateHighlight() {
+            dropdownOptions.forEach((opt, i) => {
+                if (i === highlightedOptionIndex) {
+                    opt.el.classList.add('highlighted');
+                    if (typeof opt.el.scrollIntoView === 'function') {
+                        opt.el.scrollIntoView({ block: 'nearest' });
+                    }
+                } else {
+                    opt.el.classList.remove('highlighted');
+                }
+            });
         }
 
         function selectFood(index) {
