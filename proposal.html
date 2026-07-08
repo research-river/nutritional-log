@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFCバランス計算表 改善企画書</title>
+<style>
+    * { box-sizing: border-box; }
+    :root {
+        --ink: #1d1d1f;
+        --sub: #86868b;
+        --bg: #f5f5f7;
+        --line: #d2d2d7;
+        --p: #ff6b6b;
+        --f: #feca57;
+        --c: #48dbfb;
+        --ok: #1e8449;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Segoe UI', sans-serif;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 24px 20px 80px;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.75;
+        font-size: 15px;
+    }
+
+    /* ===== 表紙 ===== */
+    header {
+        background: white;
+        border-radius: 16px;
+        padding: 48px 40px 36px;
+        margin-bottom: 28px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    .cover-bar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 8px;
+        display: flex;
+    }
+    .cover-bar span:nth-child(1) { background: var(--p); flex: 27; }
+    .cover-bar span:nth-child(2) { background: var(--f); flex: 35; }
+    .cover-bar span:nth-child(3) { background: var(--c); flex: 38; }
+    .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        color: var(--sub);
+        margin: 0 0 10px;
+    }
+    h1 {
+        font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+        font-size: 32px;
+        font-weight: 600;
+        line-height: 1.4;
+        margin: 0 0 14px;
+    }
+    .lead {
+        color: var(--sub);
+        margin: 0;
+        max-width: 40em;
+    }
+    .cover-meta {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--sub);
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    /* ===== セクション共通 ===== */
+    section {
+        background: white;
+        border-radius: 16px;
+        padding: 32px 40px;
+        margin-bottom: 28px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h2 {
+        font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+        font-size: 22px;
+        font-weight: 600;
+        margin: 0 0 6px;
+    }
+    .h2-sub {
+        font-size: 13px;
+        color: var(--sub);
+        margin: 0 0 20px;
+    }
+    h3 {
+        font-size: 16px;
+        margin: 28px 0 10px;
+    }
+    p { margin: 0 0 14px; }
+    ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+    li { margin-bottom: 6px; }
+    code {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 0.88em;
+        background: var(--bg);
+        border-radius: 5px;
+        padding: 2px 6px;
+    }
+    pre {
+        background: #1d1d1f;
+        color: #f5f5f7;
+        border-radius: 10px;
+        padding: 14px 18px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+    a { color: #0071e3; }
+
+    /* ===== 課題リスト ===== */
+    .issue {
+        display: flex;
+        gap: 14px;
+        padding: 14px 0;
+        border-bottom: 1px solid #ececf0;
+        align-items: baseline;
+    }
+    .issue:last-child { border-bottom: none; }
+    .issue-rank {
+        flex-shrink: 0;
+        font-size: 11px;
+        font-weight: bold;
+        border-radius: 20px;
+        padding: 3px 10px;
+        white-space: nowrap;
+    }
+    .rank-high { background: #ffe3e3; color: #c0392b; }
+    .rank-mid  { background: #fff3d6; color: #9c6f00; }
+    .rank-low  { background: #e0f6ff; color: #0b6e8f; }
+    .issue b { display: block; }
+    .issue small { color: var(--sub); }
+
+    /* ===== フェーズカード ===== */
+    .phase {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 18px;
+        border-left-width: 6px;
+    }
+    .phase-1 { border-left-color: var(--p); }
+    .phase-2 { border-left-color: var(--f); }
+    .phase-3 { border-left-color: var(--c); }
+    .phase h3 { margin: 0 0 4px; }
+    .phase .phase-goal { font-size: 13px; color: var(--sub); margin-bottom: 12px; }
+
+    /* ===== 表 ===== */
+    .table-wrap { overflow-x: auto; }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13.5px;
+        margin-bottom: 14px;
+    }
+    th, td {
+        border: 1px solid #ececf0;
+        padding: 8px 12px;
+        text-align: left;
+        vertical-align: top;
+    }
+    th { background: var(--bg); font-weight: 600; white-space: nowrap; }
+
+    /* ===== ビフォー/アフター デモ ===== */
+    .demo {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0 8px;
+    }
+    .demo-note { font-size: 12.5px; color: var(--sub); margin-bottom: 14px; }
+    .demo-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    @media (max-width: 640px) { .demo-grid { grid-template-columns: 1fr; } }
+    .demo-pane {
+        background: white;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .demo-pane h4 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tag {
+        font-size: 10.5px;
+        font-weight: bold;
+        border-radius: 20px;
+        padding: 2px 9px;
+    }
+    .tag-before { background: #e5e5ea; color: var(--sub); }
+    .tag-after  { background: #d1f2eb; color: var(--ok); }
+    .demo-pane select, .demo-pane input[type="search"] {
+        width: 100%;
+        font-size: 14px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        font-family: inherit;
+    }
+    .demo-pane input[type="search"]:focus {
+        outline: 2px solid var(--c);
+        outline-offset: 1px;
+        border-color: transparent;
+    }
+    #demoResults {
+        margin-top: 8px;
+        max-height: 210px;
+        overflow-y: auto;
+        border: 1px solid #ececf0;
+        border-radius: 8px;
+    }
+    #demoResults .cat {
+        font-size: 11px;
+        font-weight: bold;
+        color: var(--sub);
+        background: var(--bg);
+        padding: 4px 10px;
+        position: sticky;
+        top: 0;
+    }
+    #demoResults .food {
+        padding: 7px 10px;
+        font-size: 13.5px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: default;
+    }
+    #demoResults .food:hover { background: #f0f8ff; }
+    #demoResults .food .kcal { color: var(--sub); font-size: 12px; white-space: nowrap; }
+    #demoResults .empty { padding: 12px; font-size: 13px; color: var(--sub); }
+
+    /* ===== Netlify手順 ===== */
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li {
+        counter-increment: step;
+        display: flex;
+        gap: 14px;
+        padding: 12px 0;
+        border-bottom: 1px solid #ececf0;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+        content: counter(step);
+        flex-shrink: 0;
+        width: 26px; height: 26px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: white;
+        font-size: 13px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
+    }
+    .callout {
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin: 14px 0;
+        font-size: 14px;
+        background: #eaf6ff;
+        border-left: 4px solid var(--c);
+    }
+    .callout.warn { background: #fff8e6; border-left-color: var(--f); }
+
+    footer {
+        text-align: center;
+        font-size: 12px;
+        color: var(--sub);
+        margin-top: 40px;
+    }
+
+    @media print {
+        body { background: white; max-width: none; padding: 0; font-size: 12px; }
+        section, header { box-shadow: none; border: 1px solid var(--line); break-inside: avoid; padding: 20px 24px; }
+        .demo { display: none; }
+    }
+    @media (max-width: 640px) {
+        header, section { padding: 24px 20px; }
+        h1 { font-size: 24px; }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="cover-bar"><span></span><span></span><span></span></div>
+    <p class="eyebrow">改善企画書</p>
+    <h1>PFCバランス計算表を、<br>毎日つづけられる道具にする</h1>
+    <p class="lead">サーバー代ゼロ・無料の範囲のまま、いちばんの不満である「食品が探しにくい」を解消し、日々の入力の手間を減らすための改善計画。入力はmacOS、栄養指導の先生への提示はiPad(またはPDF/紙)という使い方を前提にする。</p>
+    <div class="cover-meta">
+        <span>作成日:2026年7月8日</span>
+        <span>対象:index.html / 栄養成分表_.csv</span>
+        <span>リポジトリ:research-river/nutritional-log</span>
+    </div>
+</header>
+
+<section>
+    <h2>1. 現状の構成</h2>
+    <p class="h2-sub">いま動いているものの整理</p>
+    <p>現在の計算表は <code>index.html</code> 1ファイルだけで動く静的アプリで、サーバーもデータベースも使いません。データはすべてブラウザの localStorage に保存されます。この「無料で完結する」構成は今後も変えません。</p>
+    <div class="table-wrap">
+    <table>
+        <tr><th>食品データ</th><td><code>栄養成分表_.csv</code>(8列・約40食品)を手動でアップロードして読み込み。読み込み後は localStorage に保存され、次回以降の再アップロードは不要</td></tr>
+        <tr><th>食事の登録</th><td>朝食・昼食・夕食・間食の4区分。プルダウンで食品を選び、分量(1/3〜5)を選んで追加</td></tr>
+        <tr><th>集計</th><td>日別のカレンダー管理。エネルギー・P・F・C・食物繊維・食塩の合計と、目標値に対するPFCバランスバー</td></tr>
+        <tr><th>バックアップ</th><td>JSON書き出し/読み込み、提出用CSV書き出し</td></tr>
+        <tr><th>利用環境</th><td>入力はmacOSのブラウザ。スマホは使わない(モバイル回線なし)。栄養指導の先生にはiPadで見せられると理想的</td></tr>
+    </table>
+    </div>
+</section>
+
+<section>
+    <h2>2. 課題</h2>
+    <p class="h2-sub">優先度の高い順</p>
+
+    <div class="issue">
+        <span class="issue-rank rank-high">最優先</span>
+        <div><b>食品が探しにくい</b>
+        <small>全食品が1本のプルダウンにフラットに並ぶため、目的の食品にたどり着くまで全リストを目視で探す必要がある。食品が増えるほど悪化する。</small></div>
+    </div>
+    <div class="issue">
+        <span class="issue-rank rank-high">最優先</span>
+        <div><b>CSVに分類(カテゴリ)がない</b>
+        <small>現在は「□,,,,,,,」という区切り行で見た目上グループ分けしているが、アプリはこれを栄養ゼロの食品として誤って取り込んでしまう(プルダウンに「□」が並ぶ原因)。</small></div>
+    </div>
+    <div class="issue">
+        <span class="issue-rank rank-mid">中</span>
+        <div><b>毎日ほぼ同じ食事なのに、毎回選び直している</b>
+        <small>「昨日と同じ」「いつもの朝食セット」を一発で登録する手段がない。</small></div>
+    </div>
+    <div class="issue">
+        <span class="issue-rank rank-mid">中</span>
+        <div><b>CSVの更新時に手動アップロードが必要</b>
+        <small>食品を追加するたびに、CSVを編集 → アプリでファイル選択、という2段階の作業になる。</small></div>
+    </div>
+    <div class="issue">
+        <span class="issue-rank rank-mid">中</span>
+        <div><b>栄養指導の先生に見せる手段が確立していない</b>
+        <small>記録は入力したMacのブラウザ内にしか保存されないため、iPadでそのまま見ることはできない。現状は提出用CSV書き出しがあるだけで、見せ方の段取りが決まっていない。</small></div>
+    </div>
+    <div class="issue">
+        <span class="issue-rank rank-low">低</span>
+        <div><b>糖質の列が使われていない</b>
+        <small>CSVの「糖質(g)」は読み込まれているが、画面のどこにも表示・集計されていない。</small></div>
+    </div>
+</section>
+
+<section>
+    <h2>3. 改善案</h2>
+    <p class="h2-sub">3つのフェーズに分けて、効果の大きいものから。すべて無料・静的ファイルのままで実現できます</p>
+
+    <div class="phase phase-1">
+        <h3>Phase 1 — 食品を「探す」から「打てば出る」へ</h3>
+        <p class="phase-goal">体感がいちばん変わる改善。これだけ先にやる価値があります。</p>
+        <ul>
+            <li><b>インクリメンタル検索:</b>プルダウンの代わりに検索ボックスを置き、「さば」と打てば鯖の食品だけが絞り込まれて出るようにする。</li>
+            <li><b>CSVにカテゴリ列を追加:</b>先頭に「カテゴリ」列を1列足し(例:チキン/魚/主食/乳製品…)、検索結果や一覧をカテゴリ見出し付きで表示する。「□」区切り行は廃止でき、ゴミデータ問題も同時に解決。</li>
+            <li><b>よく使う食品を先頭に:</b>追加した回数を localStorage に記録し、使用頻度の高い食品を検索前の初期表示に出す。毎日食べるものはワンタップ圏内になる。</li>
+        </ul>
+    </div>
+
+    <div class="phase phase-2">
+        <h3>Phase 2 — 毎日の入力を1分以内に</h3>
+        <p class="phase-goal">「昨日と同じ」を最短にする。</p>
+        <ul>
+            <li><b>前日コピー:</b>選択中の日付に、前日(または任意の日)の食事をまるごとコピーするボタン。</li>
+            <li><b>マイセット登録:</b>「いつもの朝食」など定番の組み合わせをセットとして保存し、一発で追加。</li>
+            <li><b>CSVの自動読み込み:</b>Netlify上で動かすなら <code>fetch('栄養成分表_.csv')</code> で同じサイト内のCSVを自動で読めるため、手動アップロードを廃止できる(CSVを更新して push するだけで全端末に反映)。</li>
+            <li><b>糖質の表示・集計:</b>読み込み済みの糖質列を、食物繊維・食塩と同様に合計欄へ追加。</li>
+        </ul>
+    </div>
+
+    <div class="phase phase-3">
+        <h3>Phase 3 — 栄養指導の先生に「見せる」を整える</h3>
+        <p class="phase-goal">入力はMacで完結させ、iPadは見せる専用と割り切る。</p>
+        <ul>
+            <li><b>レポート画面+PDF書き出し:</b>期間(1週間・1ヶ月)を指定すると、日ごとの食事内容とPFC・食物繊維・食塩の推移を印刷向けレイアウトで表示する画面を追加する。Macの印刷ダイアログから「PDFとして保存」し、AirDropでiPadに送っておけば、<b>診察室に回線がなくてもその場で見せられる</b>。紙に印刷しても同じものが使える。</li>
+            <li><b>iPadでの直接閲覧(Wi-Fiがある場合の補助手段):</b>NetlifyのURLをiPadのSafariで開き、MacからAirDropで送ったJSONバックアップを読み込めば、アプリそのままの画面(カレンダー・PFCバー)で見せることもできる。ただし回線に依存するため、基本はPDFとする。</li>
+        </ul>
+    </div>
+
+    <h3>工数と効果の一覧</h3>
+    <div class="table-wrap">
+    <table>
+        <tr><th>改善</th><th>効果</th><th>工数目安</th><th>変更箇所</th></tr>
+        <tr><td>インクリメンタル検索</td><td>◎ 食品探しが数秒に</td><td>小(半日)</td><td>index.html のみ</td></tr>
+        <tr><td>カテゴリ列の追加</td><td>◎ 一覧性+ゴミデータ解消</td><td>小(CSV編集+読込修正)</td><td>CSV+index.html</td></tr>
+        <tr><td>よく使う食品の優先表示</td><td>○ 定番がワンタップ</td><td>小</td><td>index.html のみ</td></tr>
+        <tr><td>前日コピー/マイセット</td><td>◎ 入力時間が激減</td><td>中(1日)</td><td>index.html のみ</td></tr>
+        <tr><td>CSV自動読み込み</td><td>○ 更新の手間が消える</td><td>小</td><td>index.html のみ ※要Netlify等</td></tr>
+        <tr><td>糖質の表示</td><td>△ 情報が増える</td><td>小</td><td>index.html のみ</td></tr>
+        <tr><td>レポート画面+PDF書き出し</td><td>◎ 先生への提示がスムーズに</td><td>中(1日)</td><td>index.html のみ</td></tr>
+    </table>
+    </div>
+
+    <h3>体験デモ:食品選択のビフォー / アフター</h3>
+    <div class="demo">
+        <p class="demo-note">実際のCSVの食品データ(抜粋)+サンプル食品で動きます。右側の検索ボックスに「さば」「チキン」などと入力してみてください。</p>
+        <div class="demo-grid">
+            <div class="demo-pane">
+                <h4><span class="tag tag-before">現在</span>フラットなプルダウン</h4>
+                <select id="demoBefore" size="9" aria-label="現在の食品プルダウンの再現"></select>
+            </div>
+            <div class="demo-pane">
+                <h4><span class="tag tag-after">改善後</span>検索+カテゴリ表示</h4>
+                <input type="search" id="demoSearch" placeholder="食品名で検索(例:さば)" aria-label="食品を検索">
+                <div id="demoResults" role="listbox" aria-label="検索結果"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>4. CSVの新フォーマット案</h2>
+    <p class="h2-sub">カテゴリ列を1列足すだけ。既存データの数値はそのまま使えます</p>
+    <p>先頭に「カテゴリ」列を追加します。区切り行(<code>□,,,,,,,</code>)と空行は削除します。</p>
+<pre><code>カテゴリ,食品名,エネルギー(kcal),たんぱく質(g),脂質(g),炭水化物(g),糖質(g),食物繊維(g),食塩相当量(g)
+チキン,国産鶏のサラダチキン,97,20.8,1.4,0.7,0,0.6,1.5
+チキン,炭火やきとりグリルチキン,112,18.2,1.4,7.0,6.4,0.6,1.2
+魚,ファミリーマート さばの塩焼き,237,14.6,19.7,0.3,0.3,0.0,1.2
+魚,サミット サバ缶,188,19.8,11.9,0.5,0.5,0,0.8</code></pre>
+    <p>移行作業は、既存CSVの各行の先頭にカテゴリを書き足していくだけです(約40行、15分程度)。アプリ側は読み込み処理の列番号を1つずらし、カテゴリを保持するよう修正します。</p>
+</section>
+
+<section>
+    <h2>5. Netlifyへの公開手順(備忘録)</h2>
+    <p class="h2-sub">忘れたときはここを読む</p>
+
+    <h3>まず現状を確認する</h3>
+    <ol class="steps">
+        <li><div><a href="https://app.netlify.com">app.netlify.com</a> にログインする(GitHubアカウントでログインしていた可能性が高い)。</div></li>
+        <li><div>「Sites」の一覧に nutritional-log 系のサイトが残っているか確認する。あればサイト名のURL(〇〇.netlify.app)をクリックして、今も表示されるか見る。</div></li>
+    </ol>
+
+    <h3>サイトが残っていた場合(GitHub連携が生きている)</h3>
+    <p>何も設定し直す必要はありません。手元の変更をコミットして push するだけで、数十秒後に自動で公開されます。</p>
+<pre><code>cd ~/Desktop/nutritional-log
+git add -A
+git commit -m "Update"
+git push origin main</code></pre>
+
+    <h3>サイトが消えていた/連携が切れていた場合</h3>
+    <ol class="steps">
+        <li><div>Netlifyで「Add new site」→「Import an existing project」→「GitHub」を選ぶ。</div></li>
+        <li><div>リポジトリ一覧から <code>research-river/nutritional-log</code> を選ぶ。</div></li>
+        <li><div>設定はすべてそのままでよい:<b>Build command は空欄</b>、<b>Publish directory はルート(空欄または「.」)</b>。ビルド不要の静的サイトなので何も入れない。</div></li>
+        <li><div>「Deploy」を押す。以後は push するたびに自動デプロイされる。</div></li>
+    </ol>
+
+    <div class="callout">
+        <b>いちばん簡単な方法(Git不要):</b> <a href="https://app.netlify.com/drop">Netlify Drop</a> のページに、nutritional-log フォルダをドラッグ&ドロップするだけでも公開できます。ただしこの方法は push しても更新されないので、恒久運用にはGitHub連携がおすすめです。
+    </div>
+    <div class="callout warn">
+        <b>公開範囲について:</b> Netlifyに置いたファイルはURLを知っていれば誰でも見られます。<code>robots.txt</code> で検索エンジンには載らないよう設定済みですが、食事記録データ自体は各ブラウザの localStorage にしか保存されないため、サイト経由で他人に見られることはありません。なお、無料の代替として GitHub Pages(リポジトリの Settings → Pages)もあります。
+    </div>
+</section>
+
+<section>
+    <h2>6. まとめ</h2>
+    <p class="h2-sub">おすすめの進め方</p>
+    <p><b>まず Phase 1 だけ実施することを推奨します。</b>CSVにカテゴリ列を足し、プルダウンを検索ボックスに置き換える——この2つで「食品を探すのに一苦労」という最大の不満が解消され、ついでに「□」のゴミデータ問題も消えます。工数は半日〜1日程度、費用はゼロです。</p>
+    <p>その後、実際に使ってみて「毎日の入力がまだ面倒だ」と感じたら Phase 2(前日コピー・マイセット・CSV自動読み込み)へ。栄養指導の予定が近いなら、Phase 3 のレポート画面+PDF書き出しを先に作る順番でもかまいません(他のフェーズと独立して作れます)。いずれもMacだけで完結し、iPadには見せる直前にAirDropでPDFを送るだけです。</p>
+</section>
+
+<footer>PFCバランス計算表 改善企画書 — 2026年7月8日</footer>
+
+<script>
+(function () {
+    // 実CSVからの抜粋+カテゴリ付与(デモ用)
+    var foods = [
+        ['チキン', '国産鶏のサラダチキン', 97],
+        ['チキン', '炭火やきとりグリルチキン', 112],
+        ['チキン', 'ハーブ&スパイスサラダチキン', 119],
+        ['魚', 'ファミリーマート さばの塩焼き', 237],
+        ['魚', 'ファミリーマートさばの西京焼き', 214],
+        ['魚', 'ファミリーマート銀鮭の西京焼き', 139],
+        ['魚', 'ファミリーマート 銀鮭の塩焼き', 121],
+        ['魚', 'サミット サバ缶', 188],
+        ['魚', '八戸 鯖水煮缶(食塩不使用)', 162],
+        ['主食', 'ごはん(150g)', 234],
+        ['主食', '食パン(6枚切り1枚)', 149],
+        ['乳製品', 'ギリシャヨーグルト プレーン', 89],
+        ['乳製品', 'プロセスチーズ', 62],
+        ['間食', 'ミックスナッツ(25g)', 152],
+        ['間食', 'プロテインバー', 183]
+    ];
+
+    // Before: フラットなプルダウン(現状の再現)
+    var sel = document.getElementById('demoBefore');
+    foods.forEach(function (f) {
+        var o = document.createElement('option');
+        o.textContent = f[1] + ' (' + f[2] + 'kcal)';
+        sel.appendChild(o);
+    });
+
+    // After: 検索+カテゴリ見出し
+    var input = document.getElementById('demoSearch');
+    var results = document.getElementById('demoResults');
+
+    function render(query) {
+        var q = query.trim().toLowerCase();
+        var hits = foods.filter(function (f) {
+            return !q || f[0].toLowerCase().indexOf(q) !== -1 || f[1].toLowerCase().indexOf(q) !== -1;
+        });
+        results.innerHTML = '';
+        if (!hits.length) {
+            var e = document.createElement('div');
+            e.className = 'empty';
+            e.textContent = '「' + query + '」に一致する食品はありません';
+            results.appendChild(e);
+            return;
+        }
+        var lastCat = null;
+        hits.forEach(function (f) {
+            if (f[0] !== lastCat) {
+                lastCat = f[0];
+                var c = document.createElement('div');
+                c.className = 'cat';
+                c.textContent = f[0];
+                results.appendChild(c);
+            }
+            var row = document.createElement('div');
+            row.className = 'food';
+            row.setAttribute('role', 'option');
+            var name = document.createElement('span');
+            name.textContent = f[1];
+            var kcal = document.createElement('span');
+            kcal.className = 'kcal';
+            kcal.textContent = f[2] + ' kcal';
+            row.appendChild(name);
+            row.appendChild(kcal);
+            results.appendChild(row);
+        });
+    }
+
+    input.addEventListener('input', function () { render(input.value); });
+    render('');
+})();
+</script>
+
+</body>
+</html>
