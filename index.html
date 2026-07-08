@@ -422,7 +422,7 @@
         }
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
             gap: 10px;
         }
         @media (max-width: 600px) {
@@ -597,6 +597,7 @@
         <div class="target-inputs target-row2">
             <label>食物繊維: <input type="number" id="targetFiber" value="20"> g</label>
             <label>食塩: <input type="number" id="targetSalt" value="7" step="0.5"> g以下</label>
+            <label>糖質: <input type="number" id="targetSugar" placeholder="任意" step="0.5"> g以下</label>
         </div>
     </div>
     
@@ -682,6 +683,12 @@
                 <div class="summary-value" id="totalC">0</div>
                 <div class="summary-unit">g</div>
                 <div class="summary-target" id="cTarget"></div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">糖質</div>
+                <div class="summary-value" id="totalSugar">0</div>
+                <div class="summary-unit">g</div>
+                <div class="summary-target" id="sugarTarget"></div>
             </div>
             <div class="summary-item">
                 <div class="summary-label">食物繊維</div>
@@ -806,7 +813,7 @@
             });
             
             // 目標値変更時
-            ['targetKcal', 'targetP', 'targetF', 'targetC', 'targetFiber', 'targetSalt'].forEach(id => {
+            ['targetKcal', 'targetP', 'targetF', 'targetC', 'targetFiber', 'targetSalt', 'targetSugar'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     saveTargets();
                     updateSummary();
@@ -1187,24 +1194,26 @@
         
         function updateSummary() {
             const meals = getCurrentDayData();
-            let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalFiber = 0, totalSalt = 0;
-            
+            let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0, totalSugar = 0, totalFiber = 0, totalSalt = 0;
+
             Object.values(meals).flat().forEach(food => {
                 totalKcal += food.kcal * food.quantity;
                 totalP += food.p * food.quantity;
                 totalF += food.f * food.quantity;
                 totalC += food.c * food.quantity;
+                totalSugar += (food.sugar || 0) * food.quantity;
                 totalFiber += (food.fiber || 0) * food.quantity;
                 totalSalt += (food.salt || 0) * food.quantity;
             });
-            
+
             document.getElementById('totalKcal').textContent = Math.round(totalKcal);
             document.getElementById('totalP').textContent = totalP.toFixed(1);
             document.getElementById('totalF').textContent = totalF.toFixed(1);
             document.getElementById('totalC').textContent = totalC.toFixed(1);
+            document.getElementById('totalSugar').textContent = totalSugar.toFixed(1);
             document.getElementById('totalFiber').textContent = totalFiber.toFixed(1);
             document.getElementById('totalSalt').textContent = totalSalt.toFixed(1);
-            
+
             // 目標値との比較
             const targetKcal = parseInt(document.getElementById('targetKcal').value) || 0;
             const targetPPct = parseInt(document.getElementById('targetP').value) || 0;
@@ -1212,15 +1221,17 @@
             const targetCPct = parseInt(document.getElementById('targetC').value) || 0;
             const targetFiber = parseInt(document.getElementById('targetFiber').value) || 0;
             const targetSalt = parseFloat(document.getElementById('targetSalt').value) || 0;
-            
+            const targetSugarInput = document.getElementById('targetSugar').value;
+
             const targetPg = Math.round(targetKcal * targetPPct / 100 / 4);
             const targetFg = Math.round(targetKcal * targetFPct / 100 / 9);
             const targetCg = Math.round(targetKcal * targetCPct / 100 / 4);
-            
+
             document.getElementById('kcalTarget').textContent = `目標: ${targetKcal}`;
             document.getElementById('pTarget').textContent = `目標: ${targetPg}g`;
             document.getElementById('fTarget').textContent = `目標: ${targetFg}g`;
             document.getElementById('cTarget').textContent = `目標: ${targetCg}g`;
+            document.getElementById('sugarTarget').textContent = targetSugarInput !== '' ? `目標: ${parseFloat(targetSugarInput)}g以下` : '';
             document.getElementById('fiberTarget').textContent = `目標: ${targetFiber}g以上`;
             document.getElementById('saltTarget').textContent = `目標: ${targetSalt}g以下`;
             
@@ -1287,7 +1298,8 @@
                 f: document.getElementById('targetF').value,
                 c: document.getElementById('targetC').value,
                 fiber: document.getElementById('targetFiber').value,
-                salt: document.getElementById('targetSalt').value
+                salt: document.getElementById('targetSalt').value,
+                sugar: document.getElementById('targetSugar').value
             };
             localStorage.setItem('pfc_targets', JSON.stringify(targets));
         }
@@ -1302,6 +1314,7 @@
                 document.getElementById('targetC').value = targets.c || 38;
                 document.getElementById('targetFiber').value = targets.fiber || 20;
                 document.getElementById('targetSalt').value = targets.salt || 7;
+                document.getElementById('targetSugar').value = targets.sugar || '';
             }
         }
 
